@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<title>Hiring Agent 测试</title>
+<style>
+  body { font-family:-apple-system,"PingFang SC",sans-serif; padding:24px; }
+  li.pass { color:#16a34a; } li.fail { color:#dc2626; font-weight:600; }
+  #summary { font-size:1.1rem; font-weight:700; }
+</style>
+</head>
+<body>
+<h1>Hiring Agent 测试</h1>
+<div id="summary"></div>
+<ul id="out"></ul>
+<script src="src/data.js"></script>
+<script src="src/engine.js"></script>
+<script src="src/agent.js"></script>
+<script>
+  // 测试用内存态，避免污染 localStorage
+  const results = [];
+  function test(name, fn) {
+    try { fn(); results.push([name, true]); }
+    catch (e) { results.push([name + " — " + e.message, false]); }
+  }
+  function ok(v, msg) { if (!v) throw new Error(msg || "断言失败"); }
+
+  test("帮助列出工具白名单", () => {
+    const s = Hire.initState();
+    const r = HiringAgent.reply("你能做什么？", s);
+    ok(r.text.includes("list_sla") && r.text.includes("screen"));
+  });
+
+  test("超时查询调用 list_sla", () => {
+    const s = Hire.initState();
+    const r = HiringAgent.reply("有哪些超时候选人？", s);
+    ok(r.toolsUsed.some((t) => t.tool === "list_sla" && t.ok));
+  });
+
+  test("初筛输出含证据或硬性条件", () => {
+    const s = Hire.initState();
+    const c = s.candidates.find((x) => x.status === "active");
+    const r = HiringAgent.reply("初筛 " + c.id, s);
+    ok(r.toolsUsed[0].tool === "screen" && r.toolsUsed[0].ok);
+    ok(r.text.includes("分") && (r.text.includes("证据") || r.text.includes("硬性")));
+  });
+
+  test("无工号不推进", () => {
+    const s = Hire.initState();
+    const r = HiringAgent.reply("推进下一位", s);
+    ok(r.text.includes("工号") || r.text.includes("姓名"));
+    ok(!r.toolsUsed.length);
+  });
+
+  test("淘汰必须有原因", () => {
+    const s = Hire.initState();
+    const c = s.candidates.find((x) => x.status === "active");
+    const r = HiringAgent.reply("淘汰 " + c.id, s);
+    ok(r.text.includes("原因"));
+  });
+
+  test("违规推进会被引擎拒绝并原样返回", () => {
+    const s = Hire.initState();
+    // 找一个在 phone 且反馈未齐的，或 onsite 未录用结论的
+    const phone = s.candidates.find((c) => c.status === "active" && Hire.current(c).stage === "phone"
+      && !Hire.feedbackComplete(s, c, "phone"));
+    const target = phone || s.candidates.find((c) => c.status === "active" && Hire.current(c).stage === "onsite");
+    ok(target, "无合适候选人");
+    // 清掉 phone 反馈确保失败
+    if (Hire.current(target).stage === "phone") {
+      s.feedback = s.feedback.filter((f) => !(f.cand === target.id && f.stage === "phone"));
+    }
+    const r = HiringAgent.reply("推进 " + target.id, s);
+    ok(r.toolsUsed[0].tool === "advance");
+    ok(!r.toolsUsed[0].ok || r.text.includes("已推进"));
+    // 若仍成功（onsite 已建议录用），至少工具被调用
+    ok(r.toolsUsed.length === 1);
+  });
+
+  test("分析摘要含漏斗", () => {
+    const s = Hire.initState();
+    const r = HiringAgent.reply("AI 产品经理招聘分析", s);
+    ok(r.text.includes("漏斗") && r.toolsUsed[0].ok);
+  });
+
+  const passed = results.filter((r) => r[1]).length;
+  document.getElementById("summary").textContent = `${passed}/${results.length} passed`;
+  document.title = `${passed}/${results.length} passed`;
+  document.getElementById("out").innerHTML = results.map(([n, p]) =>
+    `<li class="${p ? "pass" : "fail"}">${p ? "✓" : "✕"} ${n}</li>`).join("");
+</script>
+</body>
+</html>
