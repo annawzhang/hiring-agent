@@ -2,6 +2,11 @@
 
 **对话式招聘运营 Agent：超时催办、证据化初筛、受规则约束的推进/淘汰、邀约模板与分析摘要。只能调用与 [Hiring Copilot](https://github.com/annawzhang/hiring-copilot) 同一套 `Hire.*` 引擎，不会编造简历。**
 
+
+> **Copyright © 2026 张文婧 (Anna Zhang)** · [MIT License](./LICENSE) · [github.com/annawzhang](https://github.com/annawzhang)  
+> 欢迎学习与面试查阅；保留版权与许可声明。**禁止删除作者信息后冒充本人作品二次发表。** 公开内容为虚构/脱敏演示数据。
+
+
 [在线体验](https://annawzhang.github.io/hiring-agent/) · [测试](https://annawzhang.github.io/hiring-agent/tests.html) · [架构手册](https://annawzhang.github.io/people-product-handbook/sections/01-hiring.html)
 
 > 职位与候选人均为虚构；状态存在浏览器 localStorage。
